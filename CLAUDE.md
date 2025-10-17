@@ -348,3 +348,5 @@ chroma_db/               # Vector database (auto-created)
 - Anthropic API key with Claude access
 - ~500MB disk space for embeddings model on first run
 - always use uv to run the server do not use pip directly
+- make sure to use uv to manage all dependencies
+- use uv to run python files
