@@ -350,4 +350,5 @@ chroma_db/               # Vector database (auto-created)
 - always use uv to run the server do not use pip directly
 - make sure to use uv to manage all dependencies
 - use uv to run python files
-- Use conventional commit messages. Do not mention Claude code in the commit messages
+- Use conventional commit messages
+- Do not mention Claude code in the commit messages
