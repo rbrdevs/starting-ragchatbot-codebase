@@ -2,15 +2,16 @@
 Diagnostic script to test the live RAG system and identify issues.
 Run this to diagnose why content queries might be failing.
 """
+
 import sys
 import os
 import io
 
 # Fix Windows console encoding
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 
 # Add parent directory to path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from config import config
 from vector_store import VectorStore
@@ -21,9 +22,9 @@ from rag_system import RAGSystem
 
 def print_section(title):
     """Print a formatted section header"""
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print(f" {title}")
-    print("="*70)
+    print("=" * 70)
 
 
 def test_vector_store():
@@ -31,7 +32,9 @@ def test_vector_store():
     print_section("1. Testing Vector Store")
 
     try:
-        store = VectorStore(config.CHROMA_PATH, config.EMBEDDING_MODEL, config.MAX_RESULTS)
+        store = VectorStore(
+            config.CHROMA_PATH, config.EMBEDDING_MODEL, config.MAX_RESULTS
+        )
 
         # Check course count
         course_count = store.get_course_count()
@@ -68,6 +71,7 @@ def test_vector_store():
     except Exception as e:
         print(f"✗ EXCEPTION in VectorStore: {e}")
         import traceback
+
         traceback.print_exc()
         return False
 
@@ -77,7 +81,9 @@ def test_course_search_tool():
     print_section("2. Testing CourseSearchTool")
 
     try:
-        store = VectorStore(config.CHROMA_PATH, config.EMBEDDING_MODEL, config.MAX_RESULTS)
+        store = VectorStore(
+            config.CHROMA_PATH, config.EMBEDDING_MODEL, config.MAX_RESULTS
+        )
         tool = CourseSearchTool(store)
 
         print("✓ Tool definition:")
@@ -106,6 +112,7 @@ def test_course_search_tool():
     except Exception as e:
         print(f"✗ EXCEPTION in CourseSearchTool: {e}")
         import traceback
+
         traceback.print_exc()
         return False
 
@@ -134,6 +141,7 @@ def test_ai_generator():
     except Exception as e:
         print(f"✗ EXCEPTION in AI Generator check: {e}")
         import traceback
+
         traceback.print_exc()
         return False
 
@@ -152,7 +160,7 @@ def test_rag_system():
         print(f"✓ Course analytics:")
         print(f"  Total courses: {analytics['total_courses']}")
 
-        if analytics['total_courses'] == 0:
+        if analytics["total_courses"] == 0:
             print("✗ ERROR: No courses loaded!")
             return False
 
@@ -168,6 +176,7 @@ def test_rag_system():
     except Exception as e:
         print(f"✗ EXCEPTION in RAG System: {e}")
         import traceback
+
         traceback.print_exc()
         return False
 
@@ -197,6 +206,7 @@ def test_actual_query():
             print(f"✗ ERROR during query execution:")
             print(f"  {query_error}")
             import traceback
+
             traceback.print_exc()
             return False
 
@@ -205,22 +215,23 @@ def test_actual_query():
     except Exception as e:
         print(f"✗ EXCEPTION in query test: {e}")
         import traceback
+
         traceback.print_exc()
         return False
 
 
 def main():
     """Run all diagnostic tests"""
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print(" RAG SYSTEM DIAGNOSTIC TOOL")
-    print("="*70)
+    print("=" * 70)
 
     results = {
         "Vector Store": test_vector_store(),
         "Course Search Tool": test_course_search_tool(),
         "AI Generator Config": test_ai_generator(),
         "RAG System": test_rag_system(),
-        "Actual Query": test_actual_query()
+        "Actual Query": test_actual_query(),
     }
 
     print_section("DIAGNOSTIC SUMMARY")

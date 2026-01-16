@@ -5,7 +5,7 @@ from unittest.mock import Mock, MagicMock
 from typing import List, Dict, Any
 
 # Add parent directory to path for imports
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from models import Course, Lesson, CourseChunk
 from vector_store import SearchResults
@@ -20,10 +20,22 @@ def sample_course():
         course_link="https://example.com/course",
         instructor="John Doe",
         lessons=[
-            Lesson(lesson_number=0, title="Introduction", lesson_link="https://example.com/lesson0"),
-            Lesson(lesson_number=1, title="Basics", lesson_link="https://example.com/lesson1"),
-            Lesson(lesson_number=2, title="Advanced Topics", lesson_link="https://example.com/lesson2"),
-        ]
+            Lesson(
+                lesson_number=0,
+                title="Introduction",
+                lesson_link="https://example.com/lesson0",
+            ),
+            Lesson(
+                lesson_number=1,
+                title="Basics",
+                lesson_link="https://example.com/lesson1",
+            ),
+            Lesson(
+                lesson_number=2,
+                title="Advanced Topics",
+                lesson_link="https://example.com/lesson2",
+            ),
+        ],
     )
 
 
@@ -35,31 +47,31 @@ def sample_course_chunks():
             content="Lesson 0 content: This is an introduction to AI and machine learning.",
             course_title="Test Course on AI",
             lesson_number=0,
-            chunk_index=0
+            chunk_index=0,
         ),
         CourseChunk(
             content="We will cover basic concepts and terminology in this course.",
             course_title="Test Course on AI",
             lesson_number=0,
-            chunk_index=1
+            chunk_index=1,
         ),
         CourseChunk(
             content="Lesson 1 content: Neural networks are the foundation of deep learning.",
             course_title="Test Course on AI",
             lesson_number=1,
-            chunk_index=2
+            chunk_index=2,
         ),
         CourseChunk(
             content="Training involves adjusting weights to minimize loss functions.",
             course_title="Test Course on AI",
             lesson_number=1,
-            chunk_index=3
+            chunk_index=3,
         ),
         CourseChunk(
             content="Lesson 2 content: Advanced topics include transformers and attention mechanisms.",
             course_title="Test Course on AI",
             lesson_number=2,
-            chunk_index=4
+            chunk_index=4,
         ),
     ]
 
@@ -70,23 +82,22 @@ def sample_search_results(sample_course_chunks):
     chunks = sample_course_chunks[:3]  # Use first 3 chunks
     return SearchResults(
         documents=[chunk.content for chunk in chunks],
-        metadata=[{
-            "course_title": chunk.course_title,
-            "lesson_number": chunk.lesson_number,
-            "chunk_index": chunk.chunk_index
-        } for chunk in chunks],
-        distances=[0.1, 0.2, 0.3]
+        metadata=[
+            {
+                "course_title": chunk.course_title,
+                "lesson_number": chunk.lesson_number,
+                "chunk_index": chunk.chunk_index,
+            }
+            for chunk in chunks
+        ],
+        distances=[0.1, 0.2, 0.3],
     )
 
 
 @pytest.fixture
 def empty_search_results():
     """Create empty search results"""
-    return SearchResults(
-        documents=[],
-        metadata=[],
-        distances=[]
-    )
+    return SearchResults(documents=[], metadata=[], distances=[])
 
 
 @pytest.fixture
@@ -129,7 +140,11 @@ def mock_anthropic_client_with_tool_use():
     tool_use_block.type = "tool_use"
     tool_use_block.id = "toolu_123"
     tool_use_block.name = "search_course_content"
-    tool_use_block.input = {"query": "neural networks", "course_name": None, "lesson_number": None}
+    tool_use_block.input = {
+        "query": "neural networks",
+        "course_name": None,
+        "lesson_number": None,
+    }
 
     first_response = MagicMock()
     first_response.content = [tool_use_block]
@@ -137,7 +152,9 @@ def mock_anthropic_client_with_tool_use():
 
     # Second response: Final answer
     second_response = MagicMock()
-    second_response.content = [MagicMock(text="Neural networks are the foundation of deep learning.")]
+    second_response.content = [
+        MagicMock(text="Neural networks are the foundation of deep learning.")
+    ]
     second_response.stop_reason = "end_turn"
 
     # Configure mock to return different responses
@@ -157,7 +174,7 @@ def test_config():
         CHUNK_OVERLAP=100,
         MAX_RESULTS=5,
         MAX_HISTORY=2,
-        CHROMA_PATH="./test_chroma_db"
+        CHROMA_PATH="./test_chroma_db",
     )
 
 
@@ -174,10 +191,10 @@ def mock_tool_manager():
                 "properties": {
                     "query": {"type": "string"},
                     "course_name": {"type": "string"},
-                    "lesson_number": {"type": "integer"}
+                    "lesson_number": {"type": "integer"},
                 },
-                "required": ["query"]
-            }
+                "required": ["query"],
+            },
         }
     ]
     mock.execute_tool.return_value = "[Test Course - Lesson 0]\nThis is test content."

@@ -27,9 +27,7 @@ def clean_vector_store(test_db_path):
         shutil.rmtree(test_db_path)
 
     store = VectorStore(
-        chroma_path=test_db_path,
-        embedding_model="all-MiniLM-L6-v2",
-        max_results=5
+        chroma_path=test_db_path, embedding_model="all-MiniLM-L6-v2", max_results=5
     )
     yield store
 
@@ -62,11 +60,15 @@ class TestVectorStoreIntegration:
         assert len(results.documents) > 0
 
         # Verify relevant content is returned
-        found_neural = any("neural" in doc.lower() or "network" in doc.lower()
-                          for doc in results.documents)
+        found_neural = any(
+            "neural" in doc.lower() or "network" in doc.lower()
+            for doc in results.documents
+        )
         assert found_neural, "Should find content about neural networks"
 
-    def test_add_course_metadata_and_resolve_name(self, clean_vector_store, sample_course):
+    def test_add_course_metadata_and_resolve_name(
+        self, clean_vector_store, sample_course
+    ):
         """Test adding course metadata and resolving course names"""
         clean_vector_store.add_course_metadata(sample_course)
 
@@ -85,8 +87,7 @@ class TestVectorStoreIntegration:
     def test_search_with_course_filter(self, populated_vector_store):
         """Test searching with course name filter"""
         results = populated_vector_store.search(
-            query="machine learning",
-            course_name="AI"  # Fuzzy match
+            query="machine learning", course_name="AI"  # Fuzzy match
         )
 
         # All results should be from the specified course
@@ -95,10 +96,7 @@ class TestVectorStoreIntegration:
 
     def test_search_with_lesson_filter(self, populated_vector_store):
         """Test searching with lesson number filter"""
-        results = populated_vector_store.search(
-            query="content",
-            lesson_number=1
-        )
+        results = populated_vector_store.search(query="content", lesson_number=1)
 
         # All results should be from lesson 1
         for meta in results.metadata:
@@ -107,9 +105,7 @@ class TestVectorStoreIntegration:
     def test_search_with_combined_filters(self, populated_vector_store):
         """Test searching with both course and lesson filters"""
         results = populated_vector_store.search(
-            query="content",
-            course_name="Test Course on AI",
-            lesson_number=0
+            query="content", course_name="Test Course on AI", lesson_number=0
         )
 
         # All results should match both filters
@@ -140,8 +136,9 @@ class TestVectorStoreIntegration:
         # but they should have low relevance (high distance)
         if not results.is_empty():
             # If results exist, they should have relatively high distances
-            assert all(d > 0.5 for d in results.distances), \
-                "Results for irrelevant query should have high distance scores"
+            assert all(
+                d > 0.5 for d in results.distances
+            ), "Results for irrelevant query should have high distance scores"
 
 
 class TestCourseSearchToolIntegration:
@@ -167,10 +164,7 @@ class TestCourseSearchToolIntegration:
         """Test tool execution with course filter"""
         tool = CourseSearchTool(populated_vector_store)
 
-        result = tool.execute(
-            query="content",
-            course_name="AI"  # Fuzzy match
-        )
+        result = tool.execute(query="content", course_name="AI")  # Fuzzy match
 
         assert "[Test Course on AI" in result
         assert result != "No relevant content found"
@@ -179,12 +173,12 @@ class TestCourseSearchToolIntegration:
         """Test tool execution with invalid course name"""
         tool = CourseSearchTool(populated_vector_store)
 
-        result = tool.execute(
-            query="test",
-            course_name="Nonexistent Course XYZ"
-        )
+        result = tool.execute(query="test", course_name="Nonexistent Course XYZ")
 
-        assert "No course found matching" in result or "No relevant content found" in result
+        assert (
+            "No course found matching" in result
+            or "No relevant content found" in result
+        )
 
     def test_source_tracking_with_links(self, populated_vector_store):
         """Test that sources include correct links"""
@@ -213,18 +207,20 @@ class TestRAGSystemIntegration:
             CHUNK_OVERLAP=100,
             MAX_RESULTS=5,
             MAX_HISTORY=2,
-            CHROMA_PATH=test_db_path
+            CHROMA_PATH=test_db_path,
         )
 
     @pytest.fixture
     def mock_ai_generator(self):
         """Mock AIGenerator to avoid API calls"""
-        with patch('rag_system.AIGenerator') as mock_class:
+        with patch("rag_system.AIGenerator") as mock_class:
             mock_generator = MagicMock()
             mock_class.return_value = mock_generator
             yield mock_generator
 
-    def test_query_with_real_search(self, integration_config, mock_ai_generator, sample_course, sample_course_chunks):
+    def test_query_with_real_search(
+        self, integration_config, mock_ai_generator, sample_course, sample_course_chunks
+    ):
         """Test RAG query with real vector search but mocked AI"""
         # Clean up test db
         if os.path.exists(integration_config.CHROMA_PATH):
@@ -235,7 +231,11 @@ class TestRAGSystemIntegration:
         tool_use_block.type = "tool_use"
         tool_use_block.id = "toolu_123"
         tool_use_block.name = "search_course_content"
-        tool_use_block.input = {"query": "neural networks", "course_name": None, "lesson_number": None}
+        tool_use_block.input = {
+            "query": "neural networks",
+            "course_name": None,
+            "lesson_number": None,
+        }
 
         first_response = MagicMock()
         first_response.content = [tool_use_block]
@@ -246,7 +246,9 @@ class TestRAGSystemIntegration:
         second_response.stop_reason = "end_turn"
 
         mock_ai_generator.generate_response.side_effect = lambda **kwargs: (
-            "Neural networks are fundamental." if "tool_manager" in kwargs else "Direct response"
+            "Neural networks are fundamental."
+            if "tool_manager" in kwargs
+            else "Direct response"
         )
 
         # Create RAG system
@@ -267,7 +269,9 @@ class TestRAGSystemIntegration:
         if os.path.exists(integration_config.CHROMA_PATH):
             shutil.rmtree(integration_config.CHROMA_PATH)
 
-    def test_end_to_end_document_processing(self, integration_config, mock_ai_generator):
+    def test_end_to_end_document_processing(
+        self, integration_config, mock_ai_generator
+    ):
         """Test adding a document and querying it"""
         # Clean up test db
         if os.path.exists(integration_config.CHROMA_PATH):
@@ -281,8 +285,9 @@ class TestRAGSystemIntegration:
         test_doc_path = os.path.join(integration_config.CHROMA_PATH, "test_course.txt")
         os.makedirs(os.path.dirname(test_doc_path), exist_ok=True)
 
-        with open(test_doc_path, 'w', encoding='utf-8') as f:
-            f.write("""Course Title: Test Integration Course
+        with open(test_doc_path, "w", encoding="utf-8") as f:
+            f.write(
+                """Course Title: Test Integration Course
 Course Link: https://example.com/course
 Course Instructor: Test Instructor
 
@@ -293,7 +298,8 @@ This is the introduction to our test course about integration testing.
 Lesson 1: Advanced Topics
 Lesson Link: https://example.com/lesson1
 This lesson covers neural networks and deep learning concepts.
-""")
+"""
+            )
 
         # Add the document
         course, num_chunks = rag_system.add_course_document(test_doc_path)
@@ -334,7 +340,7 @@ class TestToolManagerIntegration:
             "search_course_content",
             query="neural networks",
             course_name=None,
-            lesson_number=None
+            lesson_number=None,
         )
 
         assert isinstance(result, str)

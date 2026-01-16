@@ -2,9 +2,10 @@ import anthropic
 from typing import List, Optional, Dict, Any
 from config import config
 
+
 class AIGenerator:
     """Handles interactions with Anthropic's Claude API for generating responses"""
-    
+
     # Static system prompt to avoid rebuilding on each call
     SYSTEM_PROMPT = """ You are an AI assistant specialized in course materials and educational content with access to tools for retrieving course information.
 
@@ -40,17 +41,13 @@ All responses must be:
 4. **Example-supported** - Include relevant examples when they aid understanding
 Provide only the direct answer to what was asked.
 """
-    
+
     def __init__(self, api_key: str, model: str):
         self.client = anthropic.Anthropic(api_key=api_key)
         self.model = model
 
         # Pre-build base API parameters
-        self.base_params = {
-            "model": self.model,
-            "temperature": 0,
-            "max_tokens": 800
-        }
+        self.base_params = {"model": self.model, "temperature": 0, "max_tokens": 800}
 
     def _build_system_content(self, conversation_history: Optional[str] = None) -> str:
         """
@@ -66,11 +63,14 @@ Provide only the direct answer to what was asked.
             return f"{self.SYSTEM_PROMPT}\n\nPrevious conversation:\n{conversation_history}"
         return self.SYSTEM_PROMPT
 
-    def _execute_tool_loop(self, messages: List[Dict[str, Any]],
-                           system_content: str,
-                           max_rounds: int,
-                           tools: Optional[List],
-                           tool_manager) -> str:
+    def _execute_tool_loop(
+        self,
+        messages: List[Dict[str, Any]],
+        system_content: str,
+        max_rounds: int,
+        tools: Optional[List],
+        tool_manager,
+    ) -> str:
         """
         Execute tool calling loop with support for sequential rounds.
 
@@ -95,7 +95,7 @@ Provide only the direct answer to what was asked.
             api_params = {
                 **self.base_params,
                 "messages": messages.copy(),
-                "system": system_content
+                "system": system_content,
             }
 
             if tools:
@@ -119,10 +119,7 @@ Provide only the direct answer to what was asked.
                 break
 
             # 4. Append assistant response to messages
-            messages.append({
-                "role": "assistant",
-                "content": response.content
-            })
+            messages.append({"role": "assistant", "content": response.content})
 
             # 5. Execute all tool calls and collect results
             tool_results = []
@@ -132,37 +129,37 @@ Provide only the direct answer to what was asked.
                 if content_block.type == "tool_use":
                     try:
                         result = tool_manager.execute_tool(
-                            content_block.name,
-                            **content_block.input
+                            content_block.name, **content_block.input
                         )
-                        tool_results.append({
-                            "type": "tool_result",
-                            "tool_use_id": content_block.id,
-                            "content": result
-                        })
+                        tool_results.append(
+                            {
+                                "type": "tool_result",
+                                "tool_use_id": content_block.id,
+                                "content": result,
+                            }
+                        )
                     except Exception as e:
                         # Handle tool execution error
                         tool_execution_failed = True
-                        tool_results.append({
-                            "type": "tool_result",
-                            "tool_use_id": content_block.id,
-                            "content": f"Error executing tool: {str(e)}",
-                            "is_error": True
-                        })
+                        tool_results.append(
+                            {
+                                "type": "tool_result",
+                                "tool_use_id": content_block.id,
+                                "content": f"Error executing tool: {str(e)}",
+                                "is_error": True,
+                            }
+                        )
 
             # 6. Append tool results to messages
             if tool_results:
-                messages.append({
-                    "role": "user",
-                    "content": tool_results
-                })
+                messages.append({"role": "user", "content": tool_results})
 
             # 7. If tool execution failed, make one final call for Claude to handle error
             if tool_execution_failed:
                 final_params = {
                     **self.base_params,
                     "messages": messages,
-                    "system": system_content
+                    "system": system_content,
                 }
                 final_response = self.client.messages.create(**final_params)
                 return final_response.content[0].text
@@ -172,29 +169,36 @@ Provide only the direct answer to what was asked.
 
         # After loop completes, check if we need to make a final call
         # If we exited because of max rounds and last response was tool_use, make final call
-        if round_counter >= max_rounds and current_response and current_response.stop_reason == "tool_use":
+        if (
+            round_counter >= max_rounds
+            and current_response
+            and current_response.stop_reason == "tool_use"
+        ):
             # Make one final API call without tools to get text response
             final_params = {
                 **self.base_params,
                 "messages": messages.copy(),
-                "system": system_content
+                "system": system_content,
             }
             current_response = self.client.messages.create(**final_params)
 
         # Extract final text response
         if current_response and current_response.content:
             for block in current_response.content:
-                if hasattr(block, 'text') and isinstance(block.text, str):
+                if hasattr(block, "text") and isinstance(block.text, str):
                     return block.text
             # If no text block found
             return "Maximum tool usage rounds reached. Please rephrase your question."
 
         return "No response generated"
 
-    def generate_response(self, query: str,
-                         conversation_history: Optional[str] = None,
-                         tools: Optional[List] = None,
-                         tool_manager=None) -> str:
+    def generate_response(
+        self,
+        query: str,
+        conversation_history: Optional[str] = None,
+        tools: Optional[List] = None,
+        tool_manager=None,
+    ) -> str:
         """
         Generate AI response with optional tool usage and conversation context.
         Supports up to 2 sequential tool calling rounds.
@@ -221,5 +225,5 @@ Provide only the direct answer to what was asked.
             system_content=system_content,
             max_rounds=config.MAX_TOOL_ROUNDS,
             tools=tools,
-            tool_manager=tool_manager
+            tool_manager=tool_manager,
         )
