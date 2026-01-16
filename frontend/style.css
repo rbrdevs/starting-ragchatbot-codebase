@@ -125,18 +125,21 @@ body {
     padding: 0;
 }
 
-/* Header - Hidden */
-header {
-    display: none;
+/* App Header */
+.app-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 2rem;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border-color);
+    flex-shrink: 0;
 }
 
-header h1 {
-    font-size: 1.75rem;
+.app-header h1 {
+    font-size: 1.5rem;
     font-weight: 700;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    color: var(--text-primary);
     margin: 0;
 }
 
@@ -855,28 +858,23 @@ details[open] .suggested-header::before {
 
 /* Theme Toggle Button */
 .theme-toggle {
-    position: fixed;
-    top: 1rem;
-    right: 1rem;
-    z-index: 1000;
-    width: 44px;
-    height: 44px;
+    width: 40px;
+    height: 40px;
     border-radius: 50%;
     border: 1px solid var(--border-color);
-    background: var(--surface);
+    background: var(--background);
     color: var(--text-primary);
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
     transition: all 0.3s ease;
-    box-shadow: var(--shadow);
+    flex-shrink: 0;
 }
 
 .theme-toggle:hover {
     background: var(--surface-hover);
     transform: scale(1.05);
-    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
 }
 
 .theme-toggle:focus {
@@ -915,13 +913,19 @@ details[open] .suggested-header::before {
     transform: rotate(15deg);
 }
 
-/* Responsive adjustments for theme toggle */
+/* Responsive adjustments for header and theme toggle */
 @media (max-width: 768px) {
+    .app-header {
+        padding: 1rem;
+    }
+
+    .app-header h1 {
+        font-size: 1.25rem;
+    }
+
     .theme-toggle {
-        top: 0.75rem;
-        right: 0.75rem;
-        width: 40px;
-        height: 40px;
+        width: 36px;
+        height: 36px;
     }
 
     .theme-toggle svg {
