@@ -1,7 +1,7 @@
 import pytest
 import sys
 import os
-from unittest.mock import Mock, MagicMock
+from unittest.mock import Mock, MagicMock, patch, AsyncMock
 from typing import List, Dict, Any
 
 # Add parent directory to path for imports
@@ -10,6 +10,13 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 from models import Course, Lesson, CourseChunk
 from vector_store import SearchResults
 from config import Config
+
+# API testing imports
+from fastapi import FastAPI, HTTPException
+from fastapi.testclient import TestClient
+from pydantic import BaseModel
+from typing import Optional
+import httpx
 
 
 @pytest.fixture
@@ -202,3 +209,164 @@ def mock_tool_manager():
         {"text": "Test Course - Lesson 0", "link": "https://example.com/lesson0"}
     ]
     return mock
+
+
+# ============================================================================
+# API Testing Fixtures
+# ============================================================================
+
+# Pydantic models for API testing (mirrors app.py models)
+class QueryRequest(BaseModel):
+    """Request model for course queries"""
+    query: str
+    session_id: Optional[str] = None
+
+
+class QueryResponse(BaseModel):
+    """Response model for course queries"""
+    answer: str
+    sources: List[Dict[str, Any]]
+    session_id: str
+
+
+class CourseStats(BaseModel):
+    """Response model for course statistics"""
+    total_courses: int
+    course_titles: List[str]
+
+
+@pytest.fixture
+def mock_rag_system():
+    """Create a mock RAGSystem for API testing"""
+    mock = MagicMock()
+
+    # Mock session manager
+    mock.session_manager = MagicMock()
+    mock.session_manager.create_session.return_value = "test-session-123"
+
+    # Mock query method
+    mock.query.return_value = (
+        "This is a test answer about machine learning.",
+        [{"text": "Test Course - Lesson 1", "link": "https://example.com/lesson1"}]
+    )
+
+    # Mock get_course_analytics
+    mock.get_course_analytics.return_value = {
+        "total_courses": 3,
+        "course_titles": ["AI Fundamentals", "Machine Learning Basics", "Deep Learning Advanced"]
+    }
+
+    return mock
+
+
+@pytest.fixture
+def mock_rag_system_error():
+    """Create a mock RAGSystem that raises errors"""
+    mock = MagicMock()
+    mock.session_manager = MagicMock()
+    mock.session_manager.create_session.return_value = "error-session"
+    mock.query.side_effect = Exception("Database connection failed")
+    mock.get_course_analytics.side_effect = Exception("Failed to retrieve analytics")
+    return mock
+
+
+def create_test_app(mock_rag_system):
+    """
+    Create a test FastAPI app without static file mounting.
+    This avoids import issues since static files don't exist in test environment.
+    """
+    app = FastAPI(title="Course Materials RAG System - Test")
+
+    # Store the mock in app state for access in endpoints
+    app.state.rag_system = mock_rag_system
+
+    @app.post("/api/query", response_model=QueryResponse)
+    async def query_documents(request: QueryRequest):
+        """Process a query and return response with sources"""
+        try:
+            rag = app.state.rag_system
+            session_id = request.session_id
+            if not session_id:
+                session_id = rag.session_manager.create_session()
+
+            answer, sources = rag.query(request.query, session_id)
+
+            return QueryResponse(
+                answer=answer,
+                sources=sources,
+                session_id=session_id
+            )
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+    @app.get("/api/courses", response_model=CourseStats)
+    async def get_course_stats():
+        """Get course analytics and statistics"""
+        try:
+            rag = app.state.rag_system
+            analytics = rag.get_course_analytics()
+            return CourseStats(
+                total_courses=analytics["total_courses"],
+                course_titles=analytics["course_titles"]
+            )
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+    @app.get("/")
+    async def root():
+        """Root endpoint for health check"""
+        return {"status": "ok", "message": "Course Materials RAG System"}
+
+    return app
+
+
+@pytest.fixture
+def test_app(mock_rag_system):
+    """Create a test FastAPI app with mocked RAG system"""
+    return create_test_app(mock_rag_system)
+
+
+@pytest.fixture
+def test_app_with_errors(mock_rag_system_error):
+    """Create a test FastAPI app with RAG system that raises errors"""
+    return create_test_app(mock_rag_system_error)
+
+
+@pytest.fixture
+def client(test_app):
+    """Create a synchronous test client"""
+    return TestClient(test_app)
+
+
+@pytest.fixture
+def client_with_errors(test_app_with_errors):
+    """Create a test client with error-raising RAG system"""
+    return TestClient(test_app_with_errors)
+
+
+@pytest.fixture
+async def async_client(test_app):
+    """Create an async test client using httpx"""
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=test_app),
+        base_url="http://testserver"
+    ) as client:
+        yield client
+
+
+@pytest.fixture
+def sample_query_request():
+    """Sample query request data"""
+    return {
+        "query": "What is machine learning?",
+        "session_id": None
+    }
+
+
+@pytest.fixture
+def sample_query_request_with_session():
+    """Sample query request with existing session"""
+    return {
+        "query": "Tell me more about neural networks",
+        "session_id": "existing-session-456"
+    }
